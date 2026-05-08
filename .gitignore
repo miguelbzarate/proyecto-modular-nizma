@@ -1,0 +1,19 @@
+# Dependencias
+node_modules
+
+# Artefactos de compilación
+dist
+*.tsbuildinfo
+.turbo
+coverage
+
+# Datos generados en tiempo de ejecución (bases por zona, modelos, logs de alertas)
+shards/
+data/
+
+# Sistema operativo
+.DS_Store
+
+# NOTA: `docs/` SÍ se versiona. Antes había una regla `docs/*` que dejaba fuera del
+# control de versiones el PDF de criterios del comité y la propuesta — justo los
+# artefactos que no se pueden perder.

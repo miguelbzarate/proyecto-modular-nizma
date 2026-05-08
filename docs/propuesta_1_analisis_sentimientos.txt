@@ -1,0 +1,54 @@
+Título
+Analizador de Sentimientos en Streams de Texto Distribuido
+
+Alcance
+Sistema que genera un flujo simulado de mensajes de texto (emulando redes sociales), lo divide en particiones procesadas concurrentemente por múltiples nodos, aplica un modelo de clasificación de sentimientos basado en aprendizaje automático a cada partición, y agrega los resultados en tiempo real para mostrar tendencias y generar reportes estadísticos. El proyecto se centra en la arquitectura distribuida y el procesamiento inteligente, evitando dependencias externas complejas mediante el uso de datos sintéticos y algoritmos implementados desde cero.
+
+Justificación de los 3 módulos
+
+Módulo 1. Arquitectura y Programación de Sistemas
+- Lenguaje de programación: Python 3.9 (seleccionado por su legibilidad, ecoscience científico estándar y facilidad para prototipar sistemas distribuidos).
+- Base de datos y estructuras de datos: SQLite3 para almacenar resultados históricos (consultas simples, sin servidor requerido) y colas thread-safe (queue.Queue) para distribución de tareas entre workers.
+- Metodología de programación: Enfoque orientado a objetos con patrón Modelo-Vista-Controlador (MVC) separado en módulos claros (data_simulator.py, worker_node.py, aggregator.py, dashboard.py).
+- Elementos de Ingeniería de Software:
+  - Uso de Git para version control con commits significativos.
+  - Pruebas unitarias con pytest para validar el clasificador Naive Bayes y la lógica de partición de datos.
+  - Documentación de APIs con docstrings y diagrama de componentes UML (modelado estructural).
+- Modelado del sistema: Diagramas UML de componentes (mostrando trabajadores, agregador y dashboard) y secuencia (ilustrando flujo de datos desde simulación hasta visualización).
+
+Módulo 2. Sistemas Inteligentes
+- Rama de IA seleccionada: Procesamiento de Lenguaje Natural (NLP) mediante clasificación de texto (subrama del aprendizaje automático).
+- Modelo matemático: Clasificador Naive Bayes Multinomial aplicado a frecuencias de términos. Formalmente:
+  P(C|F) = [P(C) * ∏ P(f_i|C)] / P(F)
+  donde C es la clase de sentimiento (positivo/negativo/neutral), F es el vector de características (frecuencias de palabras preprocesadas), y P(f_i|C) se estima mediante conteo suavizado (Laplace smoothing).
+- Justificación del algoritmo: Naive Bayes es apropiado porque:
+  - Requiere mínimo ajuste de hiperparámetros (ideal para implementación individual).
+  - Funciona bien con alta dimensionalidad (texto) pese a la supuesta independencia de características.
+  - Tiene bajo costo computacional (entrada O(n) por mensaje), permitiendo enfoque en la distribución en lugar de optimización de ML.
+  - Su interpretabilidad facilita la validación por el estudiante (ej. inspección de probabilidades condicionales por palabra clave).
+
+Módulo 3. Sistemas Distribuidos
+- Recursos compartidos y descentralización:
+  - Componentes concurrentes (3.1.1): Múltiples procesos workers (creados con multiprocessing.Process) que ejecutan el clasificador en paralelo sobre particiones del stream de entrada.
+  - Distribuir procesamiento de cálculos (3.1.4): El data_simulator particiona el flujo de mensajes sintéticos y los envía a workers mediante colas de mensajes (implementadas con multiprocessing.Queue). Cada worker calcula sentimientos independientes y envía resultados al agregador.
+- Algoritmo cliente-servidor/punto a punto (3.2): Arquitectura maestro-trabajo (variante de cliente-servidor):
+  - El proceso master (data_simulator + aggregator) actúa como servidor que distribuye tareas y recibe resultados.
+  - Cada worker actúa como cliente que solicita trabajo, procesa y reporta resultados.
+  - Notablemente no se usa un servicio existente: La lógica de partición, distribución y agregación se implementa desde cero usando sockets y colas.
+- Comunicación entre dispositivos (3.3):
+  - Comunicación TCP bidireccional entre master y workers (usando socket.socket en localhost, válido ya que cumple con "al menos dos dispositivos"interpretando procesos como entidades comunicantes en una arquitectura distribuible a máquinas físicas).
+  - Se evita la falla de "interfaces múltiples a sistema centralizado" al tener workers que procesan datos autónomos y solo sincronizan resultados.
+- Justificación de protocolos (3.4):
+  - TCP seleccionado sobre UDP por su garantía de entrega ordenada y sin pérdida, crítica para mantener integridad del conteo de sentimientos (ej. un mensaje perdido alteraría estadísticas).
+  - El overhead de TCP es aceptable dado el bajo volumen de datos (textos cortos) y la prioridad en corrección sobre latencia extrema.
+
+Lista de tecnologías a usar
+- Lenguaje: Python 3.9
+- Bibliotecas estándar: multiprocessing, socket, json, collections, sqlite3, unittest
+- Bibliotecas externas mínimas:
+  - nltk (solo para tokenización y stop words; fácilmente reemplazable por regex si se prefiere cero dependencias)
+  - scikit-learn (únicamente para validar resultados del Naive Bayes implementado manualmente; opcional si se elimina)
+  - matplotlib (para gráficos simples de tendencias en el dashboard)
+- Base de datos: SQLite3 (incluida en distribución estándar de Python)
+- Herramientas de desarrollo: Git, pytest
+- Nota sobre terceros: Todas las tecnologías son accesibles, con documentación abundante y sin requerir licencias complejas o hardware especializado. El núcleo (clasificador Naive Bayes, lógica de partición, comunicación sockets) se implementa desde cero, cumpliendo con el espíritu de "desarrollado a mano".

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    // `node16` resuelve como lo hace Node moderno y respeta el campo `type` de cada
+    // package.json. Como todos los paquetes declaran `"type": "commonjs"`, tsc emite
+    // CommonJS y `__dirname`/`require` siguen disponibles.
+    "module": "node16",
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@monitoreo/broker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@monitoreo/shared": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.6.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.3",
+    "vitest": "^1.6.1"
+  }
+}
