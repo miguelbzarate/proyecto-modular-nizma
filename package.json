@@ -2,7 +2,7 @@
   "private": true,
   "name": "monitoreo-iot",
   "version": "1.0.0",
-  "description": "Sistema de Monitoreo Ambiental IoT con Detección de Anomalías y Alertas Distribuidas",
+  "description": "Sistema de Monitoreo Ambiental IoT con Detecci\u00f3n de Anomal\u00edas y Alertas Distribuidas",
   "author": "Miguel Angel Becerra Zarate",
   "license": "ISC",
   "packageManager": "pnpm@10.33.4",
@@ -17,15 +17,14 @@
     "humo": "node scripts/humo.mjs",
     "sistema": "node scripts/sistema.mjs",
     "lint": "eslint . --ext .ts",
-    "entrenar": "node packages/trainer/dist/train.js",
-    "evaluar": "node packages/trainer/dist/evaluate.js",
+    "entrenar": "node --disable-warning=ExperimentalWarning packages/trainer/dist/train.js",
+    "evaluar": "node --disable-warning=ExperimentalWarning packages/trainer/dist/evaluate.js",
     "resiliencia": "node scripts/resiliencia.mjs",
-    "tablero": "node packages/dashboard/dist/index.js",
+    "tablero": "node --disable-warning=ExperimentalWarning packages/dashboard/dist/index.js",
     "detener": "node scripts/detener.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "better-sqlite3",
       "esbuild"
     ]
   },
@@ -37,6 +36,7 @@
     "eslint-config-prettier": "^9.1.0",
     "turbo": "^2.9.9",
     "typescript": "^6.0.3",
-    "vitest": "^1.6.1"
+    "vitest": "^5.0.1",
+    "vite": "^7.0.0"
   }
 }

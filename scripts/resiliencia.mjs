@@ -48,6 +48,7 @@ const env = {
   DATA_DIR: shardsDir,
   BROKER_PORT: PORT,
   LOG_LEVEL: "info",
+  NODE_NO_WARNINGS: "1",
   // El invariante del protocolo es que el latido sea bastante menor que el tiempo de
   // inactividad del broker. En operación son 30 s contra 90 s; aquí se comprimen a
   // 1.5 s contra 6 s para que la demostración quepa en un minuto SIN romper la

@@ -6,7 +6,9 @@ Guía rápida. Para entender qué hace y por qué, ver [GUIA-DEL-PROYECTO.md](GU
 
 ## Preparación (una sola vez)
 
-Hace falta **Node.js 22 o superior** y **pnpm**.
+Hace falta **Node.js 22 o superior** y **pnpm**. Nada más: el proyecto no tiene
+dependencias que haya que compilar, así que no se necesitan herramientas de C++ ni en
+Windows ni en Mac.
 
 ```bash
 pnpm install

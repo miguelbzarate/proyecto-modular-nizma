@@ -7,11 +7,24 @@
  *
  * Cada proceso ingestor abre exactamente una instancia. Las conexiones de SQLite no se
  * comparten entre procesos ni entre hilos.
+ *
+ * SOBRE EL MOTOR: se usa `node:sqlite`, el SQLite que Node trae incorporado desde la
+ * versión 22, en lugar de la biblioteca `better-sqlite3`.
+ *
+ * El motivo es de portabilidad, y salió de un problema real: `better-sqlite3` a partir
+ * de la versión 13 dejó de publicar binarios precompilados, así que instalarlo obliga a
+ * compilar código C++ en la máquina de destino. En macOS suele funcionar porque las
+ * herramientas de Xcode ya están; en Windows exige instalar Visual Studio con la carga
+ * de trabajo de C++, unos seis gigabytes, y falla con errores de `node-gyp` difíciles
+ * de interpretar para quien sólo quiere ejecutar el proyecto.
+ *
+ * `node:sqlite` es el mismo motor SQLite, ya compilado dentro de Node. El proyecto
+ * queda sin una sola dependencia nativa y `pnpm install` funciona en cualquier sistema
+ * operativo sin herramientas de compilación.
  */
 
-import Database from "better-sqlite3";
+import { DatabaseSync, type StatementSync } from "node:sqlite";
 import {
-  createLogger,
   ensureShardsDir,
   shardPath,
   type Alert,
@@ -31,15 +44,15 @@ export interface RepositoryOptions {
  * Qué dijo cada detector sobre una lectura. `undefined` significa que ese detector no
  * estaba corriendo, y se distingue de `false`, que significa que sí corrió y la dejó pasar.
  */
+export interface DetectorVerdicts {
+  welford?: boolean;
+  tree?: boolean;
+}
+
 /** Una lectura tal como quedó en disco, con los veredictos de cada detector. */
 export interface StoredReading extends Reading {
   flaggedWelford: number | null;
   flaggedTree: number | null;
-}
-
-export interface DetectorVerdicts {
-  welford?: boolean;
-  tree?: boolean;
 }
 
 function toFlag(verdict: boolean | undefined): number | null {
@@ -53,11 +66,11 @@ export interface ReadingFilter {
 }
 
 export class ShardRepository {
-  private readonly db: Database.Database;
+  private readonly db: DatabaseSync;
 
-  private readonly insertReadingStmt: Database.Statement;
+  private readonly insertReadingStmt: StatementSync;
 
-  private readonly insertAlertStmt: Database.Statement;
+  private readonly insertAlertStmt: StatementSync;
 
   constructor(
     private readonly location: Location,
@@ -66,19 +79,7 @@ export class ShardRepository {
     if (!options.readOnly) ensureShardsDir();
     const path = options.path ?? shardPath(location);
 
-    this.db = new Database(path, {
-      readonly: options.readOnly ?? false,
-      // El `verbose: console.log` de la versión anterior imprimía cada sentencia SQL.
-      // Con cien sensores a una lectura por segundo eso inunda la terminal y arruina
-      // la demostración, así que ahora es opcional.
-      ...(process.env.SQL_VERBOSE === "1"
-        ? {
-            verbose: (message?: unknown): void => {
-              createLogger(`SQL-${location}`).debug(String(message));
-            },
-          }
-        : {}),
-    });
+    this.db = new DatabaseSync(path, { readOnly: options.readOnly ?? false });
 
     if (!options.readOnly) {
       this.initSchema();
@@ -103,33 +104,13 @@ export class ShardRepository {
     `);
   }
 
-  /**
-   * Agrega columnas que no existían en versiones anteriores del esquema.
-   *
-   * `CREATE TABLE IF NOT EXISTS` no modifica una tabla ya creada, así que un shard de
-   * antes quedaría sin las columnas nuevas y toda consulta fallaría. Se comprueba y se
-   * agregan, en vez de obligar a borrar los datos.
-   */
-  private migrate(): void {
-    const columns = new Set(
-      (this.db.prepare("PRAGMA table_info(readings)").all() as { name: string }[]).map(
-        (c) => c.name,
-      ),
-    );
-    for (const column of ["flaggedWelford", "flaggedTree"]) {
-      if (!columns.has(column)) {
-        this.db.exec(`ALTER TABLE readings ADD COLUMN ${column} INTEGER`);
-      }
-    }
-  }
-
   private initSchema(): void {
     // WAL permite que el dashboard lea mientras el ingestor escribe, sin bloquearse.
-    this.db.pragma("journal_mode = WAL");
+    this.db.exec("PRAGMA journal_mode = WAL");
     // NORMAL no espera el fsync en cada commit. En una caída del sistema operativo se
     // pueden perder las últimas transacciones; para telemetría ambiental es un canje
     // razonable y multiplica la tasa de escritura.
-    this.db.pragma("synchronous = NORMAL");
+    this.db.exec("PRAGMA synchronous = NORMAL");
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS readings (
@@ -176,6 +157,26 @@ export class ShardRepository {
   }
 
   /**
+   * Agrega columnas que no existían en versiones anteriores del esquema.
+   *
+   * `CREATE TABLE IF NOT EXISTS` no modifica una tabla ya creada, así que un shard de
+   * antes quedaría sin las columnas nuevas y toda consulta fallaría. Se comprueba y se
+   * agregan, en vez de obligar a borrar los datos.
+   */
+  private migrate(): void {
+    const columns = new Set(
+      (this.db.prepare("PRAGMA table_info(readings)").all() as { name: string }[]).map(
+        (c) => c.name,
+      ),
+    );
+    for (const column of ["flaggedWelford", "flaggedTree"]) {
+      if (!columns.has(column)) {
+        this.db.exec(`ALTER TABLE readings ADD COLUMN ${column} INTEGER`);
+      }
+    }
+  }
+
+  /**
    * Inserta una lectura.
    *
    * @throws si la lectura no pertenece a este shard. Es defensa en profundidad: el
@@ -195,16 +196,27 @@ export class ShardRepository {
     });
   }
 
-  /** Inserción por lotes en una sola transacción. La usa el generador de datasets. */
+  /**
+   * Inserción por lotes en una sola transacción.
+   *
+   * `node:sqlite` no trae el envoltorio `transaction()` de better-sqlite3, así que el
+   * control es explícito. Si algo falla a medias se deshace todo: un lote a medio
+   * insertar es peor que un lote no insertado, porque deja la serie con huecos
+   * silenciosos.
+   */
   insertBatch(readings: readonly Reading[]): void {
-    const transaction = this.db.transaction((rows: readonly Reading[]) => {
-      for (const row of rows) this.insert(row);
-    });
-    transaction(readings);
+    this.db.exec("BEGIN");
+    try {
+      for (const row of readings) this.insert(row);
+      this.db.exec("COMMIT");
+    } catch (err) {
+      this.db.exec("ROLLBACK");
+      throw err;
+    }
   }
 
   recordAlert(alert: Alert): void {
-    this.insertAlertStmt.run(alert);
+    this.insertAlertStmt.run({ ...alert });
   }
 
   countReadings(): number {
@@ -232,7 +244,8 @@ export class ShardRepository {
   /** Últimas lecturas en orden cronológico ascendente (listas para graficar). */
   latestReadings(filter: ReadingFilter = {}): StoredReading[] {
     const conditions: string[] = [];
-    const params: Record<string, unknown> = { limit: filter.limit ?? 100 };
+    // El tipo de node:sqlite sólo admite valores que SQLite entienda, no `unknown`.
+    const params: Record<string, string | number> = { limit: filter.limit ?? 100 };
 
     if (filter.sensorId !== undefined) {
       conditions.push("sensorId = @sensorId");
@@ -254,14 +267,14 @@ export class ShardRepository {
           ORDER BY id DESC
           LIMIT @limit`,
       )
-      .all(params) as StoredReading[];
+      .all(params) as unknown as StoredReading[];
     return rows.reverse();
   }
 
   latestAlerts(limit = 50): Alert[] {
     return this.db
-      .prepare("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT ?")
-      .all(limit) as Alert[];
+      .prepare("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT @limit")
+      .all({ limit }) as unknown as Alert[];
   }
 
   close(): void {

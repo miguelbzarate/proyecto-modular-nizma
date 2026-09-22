@@ -77,7 +77,7 @@ un sistema distribuido y no un programa grande.**
 | Líneas de código | 5 761 |
 | Líneas de pruebas | 2 825 |
 | Pruebas automáticas | 212 |
-| Dependencias externas en tiempo de ejecución | 2 (SQLite y Zod) |
+| Dependencias externas en tiempo de ejecución | 1 (Zod) |
 
 Esa última fila importa: casi todo está construido a mano sobre las herramientas básicas
 del lenguaje. No hay frameworks que escondan cómo funcionan las cosas.
@@ -225,7 +225,7 @@ pnpm resiliencia   # provoca tres fallas y comprueba la recuperación
 |---|---|---|---|
 | **Node.js** | 24.15 LTS | Motor de ejecución | Su modelo de eventos maneja miles de conexiones de red sin un hilo por cada una |
 | **TypeScript** | 6.0.3 | Lenguaje | JavaScript con tipos: los errores salen al compilar, no en la demostración |
-| **SQLite** (better-sqlite3) | 13.0.3 | Base de datos | Sin servidor: la base es un archivo. Ideal para repartir una por zona |
+| **SQLite** (`node:sqlite`) | incluido en Node | Base de datos | Sin servidor: la base es un archivo. Ideal para repartir una por zona. Viene dentro de Node, así que no hay que compilar nada |
 | **Zod** | 3.25.76 | Validación | Verifica los datos que llegan por red, donde TypeScript ya no protege |
 | **Vitest** | 1.6.1 | Pruebas | Rápido y sin configuración |
 | **Turborepo** | 2.9.9 | Construcción | Compila los 8 paquetes en el orden correcto |
@@ -242,6 +242,7 @@ Esto es tan importante como lo que sí, y es donde está la originalidad del pro
 | Chart.js, D3 | La gráfica en SVG | Una CDN significa que sin internet no hay gráfica el día de la defensa |
 | scikit-learn, TensorFlow | El árbol de decisión | Es el módulo que se está evaluando; usar una biblioteca sería entregar el trabajo de otro |
 | Bibliotecas de estructuras | Deque, QuickSelect | El criterio 1.2 pide emplear estructuras de datos |
+| `better-sqlite3` | `node:sqlite` | Desde su versión 13 obliga a compilar C++ en la máquina de destino: en Windows exige instalar Visual Studio con la carga de C++, unos 6 GB. El SQLite incluido en Node es el mismo motor, ya compilado |
 
 ---
 

@@ -44,7 +44,7 @@ const processes = [];
 
 function launch(name, script, args, color) {
   const child = spawn(process.execPath, [join(ROOT, script), ...args], {
-    env: { ...process.env, BROKER_PORT: PORT },
+    env: { ...process.env, BROKER_PORT: PORT, NODE_NO_WARNINGS: "1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
 

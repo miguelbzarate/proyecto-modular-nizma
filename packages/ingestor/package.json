@@ -13,14 +13,12 @@
   },
   "dependencies": {
     "@monitoreo/detector": "workspace:*",
-    "@monitoreo/shared": "workspace:*",
-    "better-sqlite3": "^13.0.3"
+    "@monitoreo/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3",
-    "vitest": "^1.6.1"
+    "vitest": "^5.0.1"
   }
 }

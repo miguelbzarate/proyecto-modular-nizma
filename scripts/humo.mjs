@@ -50,6 +50,9 @@ const env = {
   DATA_DIR: shardsDir,
   BROKER_PORT: PORT,
   LOG_LEVEL: "warn",
+  // node:sqlite es experimental y avisa una vez por proceso; con nueve procesos
+  // eso son nueve avisos que no aportan nada a la salida de la prueba.
+  NODE_NO_WARNINGS: "1",
 };
 
 function launch(name, script, args) {
